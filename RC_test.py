@@ -25,7 +25,8 @@ def NARMA_Generator(length,u):
 
     #Iteratively calculate based on NARMA10 formula
     for k in range(10,length):
-        t = 0.3*y_k[k-1]+0.05*y_k[k-1]*sum(y_k[k-1-i] for i in range(10))+1.5*u[            k-1]*u[k-10]+0.1
+        t = 0.3*y_k[k-1]+0.05*y_k[k-1]*sum(y_k[k-1-i] for i in range(10))+1.5*\
+        u[k-1]*u[k-10]+0.1
         y_k = np.append(y_k,t)
 
     return y_k
@@ -59,7 +60,8 @@ def NARMA_Test(test_length = 800,train_length = 800,plot = True):
     y_test = clf.predict(x_test)
     
     #Calculate NRMSE
-    NRMSE = np.sqrt(np.mean(np.square(y_test[50:]-target[train_length+50:]))            /np.var(target[train_length+50:]))
+    NRMSE = np.sqrt(np.mean(np.square(y_test[50:]-target[train_length+50:]))/\
+            np.var(target[train_length+50:]))
     
     #Plot predicted Time Series
     if(plot == True):

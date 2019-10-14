@@ -64,13 +64,13 @@ class DelayReservoir():
         
         #Iteratively solve Mackey Glass Equation with Euler's Method
         for i in range(1,cycles):
-            vn_0 = M_x[i-1,-1] + (-M_x[i-1,-1]+self.eta*(M_x[i-1,-1]+
-                self.gamma*J[i-1,0])/(1+M_x[i-1,0]+self.gamma*
+            vn_0 = M_x[i-1,-1] + (-M_x[i-1,-1]+self.eta*(M_x[i-1,-1]+\
+                self.gamma*J[i-1,0])/(1+M_x[i-1,0]+self.gamma*\
                 J[i-1,9]))*self.theta
             M_x[i,0] = vn_0
             for j in range(1,self.N): 
-                vn = M_x[i,j-1] + (-M_x[i,j-1] + self.eta*(M_x[i-1,j-1]+
-                    self.gamma*J[i-1,j-1])/(1+M_x[i-1,j-1]+self.gamma
+                vn = M_x[i,j-1] + (-M_x[i,j-1] + self.eta*(M_x[i-1,j-1]+\
+                    self.gamma*J[i-1,j-1])/(1+M_x[i-1,j-1]+self.gamma\
                     *J[i-1,j-1]))*self.theta
                 M_x[i,j] = vn
         
