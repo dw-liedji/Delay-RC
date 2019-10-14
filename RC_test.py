@@ -32,7 +32,7 @@ def NARMA_Generator(length,u):
     return y_k
 
 
-def NARMA_Test(test_length = 800,train_length = 800,plot = True):
+def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,plot = True):
     """
     Args:
         test_length: length of verification data
@@ -50,7 +50,8 @@ def NARMA_Test(test_length = 800,train_length = 800,plot = True):
     target = NARMA_Generator(len(u),u)
     
     #Instantiate Reservoir, feed in training and verification datasets
-    r1 = DelayReservoir()
+    r1 = DelayReservoir(N = 400//num_loops,eta = 0.4,gamma = 0.05,theta = 0.2,
+        loops=num_loops)
     x = r1.calculate(u[:train_length],m)
     x_test = r1.calculate(u[train_length:],m)
     
@@ -58,7 +59,7 @@ def NARMA_Test(test_length = 800,train_length = 800,plot = True):
     clf = Ridge(alpha = 0)
     clf.fit(x,target[:train_length])
     y_test = clf.predict(x_test)
-    
+
     #Calculate NRMSE
     NRMSE = np.sqrt(np.mean(np.square(y_test[50:]-target[train_length+50:]))/\
             np.var(target[train_length+50:]))
@@ -73,4 +74,13 @@ def NARMA_Test(test_length = 800,train_length = 800,plot = True):
     return NRMSE
 
 
-print(NARMA_Test())
+error1 = []
+error2 = []
+for i in range(25):
+    error1.append(NARMA_Test(test_length = 800,train_length = 800,
+        num_loops = 1,plot = False))
+    error2.append(NARMA_Test(test_length = 800,train_length = 800,
+        num_loops = 2,plot = False))
+
+print(np.mean(error1),np.std(error1))
+print(np.mean(error2),np.std(error2))
