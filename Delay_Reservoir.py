@@ -66,7 +66,7 @@ class DelayReservoir():
         J = np.vstack((np.zeros((1,self.N*self.loops)),J))
 
         #Iteratively solve Mackey Glass Equation with Euler's Method
-        for i in range(1,cycles):
+        for i in range(1,cycles+1):
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
                         +self.eta*(M_x[i-1,-1-self.N*j]+self.gamma*\
@@ -107,7 +107,7 @@ class DelayReservoir():
         J = np.vstack((np.zeros((1,self.N*self.loops)),J))
         
         #Iteratively solve Mackey Glass Equation with Euler's Method
-        for i in range(1,cycles):
+        for i in range(1,cycles+1):
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
                         +1.0*(1e-12+self.gamma*M_x[i-1,-1-self.N*j]*\
@@ -149,7 +149,7 @@ class DelayReservoir():
         J = np.vstack((np.zeros((1,self.N*self.loops)),J))
         
         #Iteratively solve Mackey Glass Equation with Euler's Method
-        for i in range(1,cycles):
+        for i in range(1,cycles+1):
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
                         +self.eta*np.sin(M_x[i-1,-1-self.N*j]+self.gamma*\
@@ -187,7 +187,7 @@ class DelayReservoir():
         J = np.vstack((np.zeros((1,self.N*2)),J))
 
         #Iteratively solve Mackey Glass Equation with Euler's Method
-        for i in range(1,cycles):
+        for i in range(1,cycles+1):
             for j in range(1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + ( -M_x[i-1,-1-self.N*j]\
                         +self.eta*(M_x[i-1,-1-self.N*j]+\
@@ -233,7 +233,7 @@ class DelayReservoir():
         J = np.vstack((np.zeros((1,int(np.round(self.N*(1+r))))),J))
 
         #Iteratively solve Mackey Glass Equation with Euler's Method
-        for i in range(1,cycles):
+        for i in range(1,cycles+1):
             for j in range(1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
                         +self.eta*(M_x[i-1,-1-self.N*j]+self.gamma*\
@@ -256,6 +256,59 @@ class DelayReservoir():
                             self.gamma*J[i-1,j-1+self.N*k]))*self.theta
                         M_x[i,j+self.N*k] = vn
 
+
+        
+        #Remove first row of zeroes
+        return M_x[1:,:400]
+
+
+    def calculateTwoCont(self,u,m,r = 2.0):
+        """
+        Calculates Reservoir State over the duration of u, two delay loops with
+        different delay times but constant node spacing, same mask length for
+        both loops
+        
+        Args:
+            u: Input data
+            m: Mask array
+            r: Ratio of t2 to t1
+
+        Returns:
+            M_x: Matrix of reservoir history
+        """
+        
+        cycles = len(u)
+        
+        #Add extra layer to account for delay at t = 0
+        M_x = np.zeros((1+cycles,self.N*(1+r)))
+        J = self.mask(u,m)
+       
+        #Add extra layer to match indexes with M_x
+        J = np.vstack((np.zeros((1,self.N*2)),J))
+
+        #Iteratively solve Mackey Glass Equation with Euler's Method
+        for i in range(1,cycles+1):
+            for j in range(1,-1,-1):
+                vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
+                        +self.eta*(M_x[i-1,-1-self.N*j]+self.gamma*\
+                        J[i-1,-1-self.N*j])/(1+M_x[i-1,-1-self.N*j]+\
+                        self.gamma*J[i-1,-1-self.N*j]))*self.theta
+                M_x[i,0+(self.loops-1-j)*self.N] = vn_0
+            for k in range(2): 
+                if(k == 0):
+                    for j in range(self.N):
+                        vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                            self.eta*(M_x[i-1,j-1+self.N*k]+self.gamma* \
+                            J[i-1,j-1+self.N*k])/(1+M_x[i-1,j-1+self.N*k]+\
+                            self.gamma*J[i-1,j-1+self.N*k]))*self.theta
+                        M_x[i,j+self.N*k] = vn
+                else:
+                    for j in range(self.N*2):
+                        vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                            self.eta*(M_x[i-1,j-1+self.N*k]+self.gamma* \
+                            J[i-1,(j-1)//r+self.N*k])/(1+M_x[i-1,j-1+self.N*k]+\
+                            self.gamma*J[i-1,(j-1)//r+self.N*k]))*self.theta
+                        M_x[i,j+self.N*k] = vn
 
         
         #Remove first row of zeroes
