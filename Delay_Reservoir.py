@@ -209,9 +209,10 @@ class DelayReservoir():
         #Remove first row of zeros
         return M_x[1:]
 
-    def calculateTwo(self,u,m,r = 1.6):
+    def calculateTwo(self,u,m,r = 1.0):
         """
-        Calculates Reservoir State over the duration of u, two delay loops with         different delay times but constant node spacing
+        Calculates Reservoir State over the duration of u, two delay loops with
+        different delay times but constant node spacing
         
         Args:
             u: Input data
@@ -229,7 +230,7 @@ class DelayReservoir():
         J = self.mask(u,m)
        
         #Add extra layer to match indexes with M_x
-        J = np.vstack((np.zeros((1,int(self.N*(1+r)))),J))
+        J = np.vstack((np.zeros((1,int(np.round(self.N*(1+r))))),J))
 
         #Iteratively solve Mackey Glass Equation with Euler's Method
         for i in range(1,cycles):
