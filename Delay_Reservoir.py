@@ -280,6 +280,7 @@ class DelayReservoir():
         cycles = len(u)
         
         #Add extra layer to account for delay at t = 0
+        #Increase second loop length by factor of r
         M_x = np.zeros((1+cycles,self.N*(1+r)))
         J = self.mask(u,m)
        
