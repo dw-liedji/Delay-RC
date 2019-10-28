@@ -315,4 +315,38 @@ class DelayReservoir():
         #Remove first row of zeroes
         return M_x[1:,:400]
 
+    def calculateDiffLoop(self,u,m,tau):
+        """
+        Calculates Reservoir State over the duration of u, length of delay loop
+        different from length total node interval
+        
+        Args:
+            u: Input data
+            m: Mask array
+            tau: Delay loop length
+
+        Returns:
+            M_x: Matrix of reservoir history
+        """
+        
+        cycles = len(u)
+        
+        #Add extra layer to account for delay at t = 0
+        M_x = np.zeros((1+cycles)*self.N)
+        J = self.mask(u,m)
+        
+        #Add extra layer to match indexes with M_x
+        J = np.vstack((np.zeros((1,self.N)),J))
+        J = J.flatten(order = 'C')
+
+        #Iteratively solve Mackey Glass Equation with Euler's Method
+        for i in range(1,(cycles+1)*self.N): 
+            vn = M_x[i-1] + (-M_x[i-1] +self.eta*(M_x[i-1-tau]+self.gamma* \
+                J[i-1])/(1+M_x[i-1-tau]+self.gamma*J[i-1]))*self.theta
+            M_x[i] = vn
+
+        #Remove first row of zeroes
+        M_x = M_x.reshape((cycles+1,self.N))
+        return M_x[1:]
+
 
