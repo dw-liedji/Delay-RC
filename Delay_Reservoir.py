@@ -212,7 +212,8 @@ class DelayReservoir():
     def calculateTwo(self,u,m,r = 1.0):
         """
         Calculates Reservoir State over the duration of u, two delay loops with
-        different delay times but constant node spacing
+        different delay times but constant node spacing, both loops undergo
+        same number of cycles
         
         Args:
             u: Input data
@@ -349,4 +350,102 @@ class DelayReservoir():
         M_x = M_x.reshape((cycles+1,self.N))
         return M_x[1:]
 
+    def calculateMultiDiffLoop(self,u,m,tau):
+        """
+        Calculates Reservoir State over the duration of u, length of delay loop
+        different from length total node interval, multiple delay loops that
+        are running constantly (do not hold shorter delay lines constant)
+        
+        Args:
+            u: Input data
+            m: Mask array
+            tau: Delay loop length
 
+        Returns:
+            M_x: Matrix of reservoir history
+        """
+        
+        cycles = len(u)
+        
+        #Add extra layer to account for delay at t = 0
+        M_x = np.zeros((self.loops,(1+cycles)*self.N))
+        J = self.mask(u,m)
+        
+        #Add extra layer to match indexes with M_x
+        J = np.vstack((np.zeros((1,self.N)),J))
+        J = J.flatten(order = 'C')
+
+        #Iteratively solve Mackey Glass Equation with Euler's Method
+        for j in range(self.loops):    
+            for i in range(1,(cycles+1)*self.N): 
+                vn = M_x[j,i-1] + (-M_x[j,i-1] +self.eta*(M_x[j,i-1-tau]+\
+                    self.gamma*J[i-1])/(1+M_x[j,i-1-tau]+self.gamma*J[i-1]))*\
+                    self.theta
+                M_x[j,i] = vn
+
+        #Remove first row of zeroes
+        M_x = M_x.reshape((cycles+1,self.N*2))
+
+        return M_x[1:]
+
+    def calculateMZNBit(self,u,m,bits):
+        """
+        Calculate rservoir state using Mach Zehnder activation function, i.e.
+        sin^2(x+phi), with finite bit precision 
+
+        Args:
+            u: input data
+            m: mask array
+            bits: number of bit precision
+
+        Returns:
+            M_x: matrix of reservoir history
+        """
+
+        cycles = len(u)
+        
+        #Add extra layer to account for delay at t = 0
+        M_x = np.zeros((1+self.cycles,self.N))
+        J = self.mask(u,m)
+        
+        #Add extra layer to match indexes with M_x
+        J = np.vstack((np.zeros((1,self.N)),J))
+        
+        #Iteratively solve Mackey Glass Equation with Euler's Method
+        for i in range(1,cycles+1):
+            for j in range(self.loops-1,-1,-1):
+                vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
+                        +self.eta*np.sin(M_x[i-1,-1-self.N*j]+self.gamma*\
+                        J[i-1,-1-self.N*j]+self.phi)**2)*self.theta
+                M_x[i,0+(self.loops-1-j)*self.N] = vn_0
+            for j in range(1,self.N): 
+                for k in range(self.loops):
+                    vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                        self.eta*np.sin(M_x[i-1,j-1+self.N*k]+self.gamma* \
+                        J[i-1,j-1+self.N*k]+self.phi)**2)*self.theta
+                    M_x[i,j+self.N*k] = vn
+        
+        #Remove first row of zeroes
+        return M_x[1:]
+
+    def digitalConversion(V,V_low,V_high,bits):
+        """
+        Convert analog voltage to digital with bits # of bits
+
+        Args:
+            V: number to be converted
+            bits: bit precision
+            V_high: high end of voltage range
+            V_low: low end of voltage range
+
+        Returns:
+            b: bit representation of number
+        """
+        
+        #Find bit that V is closest to
+        V_tot = V_high - V_low
+        vals = np.linspace(V_low,V_high,2**bits)
+        diff = abs(V*np.ones(2**bits)-vals)
+        b = np.argmin(diff)*(V_tot/2**bits)+V_low
+        
+        return b
