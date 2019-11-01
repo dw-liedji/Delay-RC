@@ -32,11 +32,20 @@ def NARMA_Generator(length,u):
     return y_k
 
 
-def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,plot = True):
+def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
+        plot = True,N = 400,eta = 0.4,gamma = 0.05,phi = np.pi/6,tau = 400):
     """
     Args:
         test_length: length of verification data
         train_length: length of training data
+        num_loops: number of delay loops in reservoir
+        a: ridge regression parameter
+        N: number of virtual nodes
+        plot: display calculated time series
+        gamma: input gain
+        eta: oscillation strength
+        phi: phase of MZN
+        r: loop delay length 
 
     Returns:
         NRMSE: Normalized Root Mean Square Error
@@ -44,19 +53,21 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,plot = True):
     
     #Randomly initialize u and m
     u = np.random.rand(train_length+test_length)/2.
-    m = np.array([random.choice([-0.1,0.1]) for i in range(400)])
-    
+    m = np.array([random.choice([-0.1,0.1]) for i in range(400//num_loops)])
+ 
     #Calculate NARMA10 target
     target = NARMA_Generator(len(u),u)
     
     #Instantiate Reservoir, feed in training and verification datasets
-    r1 = DelayReservoir(N = 400//num_loops,eta = 0.4,gamma = 0.05,theta = 0.2,
-        loops=num_loops)
-    x = r1.calculate(u[:train_length],m)
-    x_test = r1.calculate(u[train_length:],m)
+    r1 = DelayReservoir(N = N//num_loops,eta = eta,gamma = gamma,theta = 0.2,
+        loops=num_loops,phi = phi)
+    x = r1.calculateMZNBit(u[:train_length],m,8)
+    x_ideal = r1.calculateMZN(u[:train_length],m)
+    x_test = r1.calculateMZNBit(u[train_length:],m,8)
+    x_test_ideal = r1.calculateMZN(u[train_length:],m)
     
     #Train using Ridge Regression
-    clf = Ridge(alpha = 0)
+    clf = Ridge(alpha = a)
     clf.fit(x,target[:train_length])
     y_test = clf.predict(x_test)
 
@@ -66,21 +77,132 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,plot = True):
     
     #Plot predicted Time Series
     if(plot == True):
-        plt.plot(y_test)
-        plt.plot(target[train_length:])
+        #fig, (ax1,ax2) = plt.subplots(2,1)
+        plt.plot(x.flatten()[5000:])
+        plt.plot(x_ideal.flatten()[5000:])
+        #plt.plot(x.flatten()[5000:]-x_ideal.flatten()[5000:])
+        '''
+        plt.plot(y_test[50:],label='Prediction')
+        plt.plot(target[train_length+50:],label='Target')
         plt.title('NRMSE = %f'%NRMSE)
+        plt.legend()
+        '''
         plt.show()
 
     return NRMSE
 
+def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
+        a = 0,plot = True,N = 400,eta = 0.5,gamma = 1,phi = np.pi/4,r = 1):
+    """
+    Compare with pre-determined NARMA10 series
 
+    Args:
+        test_length: length of verification data
+        train_length: length of training data
+        num_loops: number of delay loops in reservoir
+        a: ridge regression parameter
+        N: number of virtual nodes
+        plot: display calculated time series
+        gamma: input gain
+        eta: oscillation strength
+        phi: phase of MZN
+        r: loop length ratio
+
+    Returns:
+        NRMSE: Normalized Root Mean Square Error
+    """
+    
+    #Import u and m
+    file1 = open("data/uin_and_target.txt","r")
+    file2 = open("data/Mask.txt","r")
+    contents = file1.readlines()
+    contents2 = file2.readlines()
+    u = []
+    target = []
+    m = []
+    for i in range(1000):
+        u.append(float(contents[i][0:contents[i].find("\t")]))
+        target.append(float(contents[i][contents[i].find("\t"):]))
+        if i < 400:
+            m.append(float(contents2[i][0:contents2[i].find("\n")]))
+    file1.close()
+    file2.close()
+    u = np.array(u)
+    m = np.array(m)
+    target = np.array(target)
+    
+    #Instantiate Reservoir, feed in training and verification datasets
+    r1 = DelayReservoir(N = N//num_loops,eta = eta,gamma = gamma,theta = 0.2,
+        loops=num_loops,phi = phi)
+    x = r1.calculateMZN(u[:train_length],m)
+    x_test = r1.calculateMZN(u[train_length:],m)
+    
+    x = []
+    file3 = open("data/X_node.txt","r")
+    contents3 = file3.readlines()
+    print(len(contents3))
+    for i in range(400000):
+        x.append(float(contents3[i][:contents3[i].find("\n")]))
+    
+    x = np.array(x)
+    x = x.reshape((-1,1))
+    x = x.reshape((1000,400))
+
+    #Train using Ridge Regression
+    clf = Ridge(alpha = a)
+    clf.fit(x[:800],target[:train_length])
+    w = clf.coef_
+    y_train = x@w
+    y_test = clf.predict(x[800:])
+    
+    #Write to file
+
+    x_total = np.concatenate((x,x_test))
+    x_total = x_total.flatten(order='C')
+    file3 = open("data/y_train2.txt","w+")
+    for i in range(800):
+        file3.write("%f"%y_train[i]+"\n")
+    file3.close()
+
+    
+    #Calculate NRMSE
+    NRMSE = np.sqrt(np.mean(np.square(y_test[50:]-target[train_length+50:]))/\
+            np.var(target[train_length+50:]))
+    
+    #Plot predicted Time Series
+    
+    if(plot == True):
+        plt.plot(y_test[50:],label='Prediction')
+        plt.plot(target[train_length+50:],label='Target')
+        plt.title('NRMSE = %f'%NRMSE)
+        plt.legend()
+        plt.show()
+    
+    return NRMSE
+
+
+print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
+    gamma = 0.05,plot = True,N = 400,tau = 400))
+
+
+#print(NARMA_Test_Compare())
+
+'''
 error1 = []
 error2 = []
-for i in range(25):
-    error1.append(NARMA_Test(test_length = 800,train_length = 800,
-        num_loops = 1,plot = False))
+for i in range(15):
+    #error1.append(NARMA_Test(test_length = 800,train_length = 800,
+    #    num_loops = 1,a = 0, plot = False,N = 200))
     error2.append(NARMA_Test(test_length = 800,train_length = 800,
-        num_loops = 2,plot = False))
+        num_loops = 1,gamma = 0.05, plot = False,N = 400,tau = 750))
 
-print(np.mean(error1),np.std(error1))
+
+
+
+#plt.plot(10*np.log10(g[1:]),error2[1:])
+#plt.ylabel('NRMSE')
+#plt.xlabel('Input gain [dB]')
+#plt.show()
+#print(np.mean(error1),np.std(error1))
 print(np.mean(error2),np.std(error2))
+'''
