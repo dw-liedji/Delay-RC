@@ -229,7 +229,7 @@ class DelayReservoir():
         #Add extra layer to account for delay at t = 0
         M_x = np.zeros((1+cycles,int(self.N*(1+r))))
         J = self.mask(u,m)
-       
+         
         #Add extra layer to match indexes with M_x
         J = np.vstack((np.zeros((1,int(np.round(self.N*(1+r))))),J))
 
@@ -405,7 +405,9 @@ class DelayReservoir():
         cycles = len(u)
         
         #Add extra layer to account for delay at t = 0
-        M_x = np.zeros((1+self.cycles,self.N))
+        M_x = np.zeros((1+cycles,self.N))
+        for i in range(len(u)):
+            u[i] = DelayReservoir.ADC(u[i],0,0.5,bits)
         J = self.mask(u,m)
         
         #Add extra layer to match indexes with M_x
@@ -415,20 +417,26 @@ class DelayReservoir():
         for i in range(1,cycles+1):
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
-                        +self.eta*np.sin(M_x[i-1,-1-self.N*j]+self.gamma*\
-                        J[i-1,-1-self.N*j]+self.phi)**2)*self.theta
+                        +self.eta*np.sin(DelayReservoir.ADC(\
+                        M_x[i-1,-1-self.N*j],0.16025,0.15825,\
+                        bits)+self.gamma*\
+                        J[i-1,-1-self.N*j]+self.phi)**2)*\
+                        self.theta
                 M_x[i,0+(self.loops-1-j)*self.N] = vn_0
             for j in range(1,self.N): 
                 for k in range(self.loops):
                     vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
-                        self.eta*np.sin(M_x[i-1,j-1+self.N*k]+self.gamma* \
-                        J[i-1,j-1+self.N*k]+self.phi)**2)*self.theta
+                        self.eta*np.sin(\
+                        M_x[i-1,j-1+self.N*k]+\
+                        self.gamma*\
+                        J[i-1,j-1+self.N*k]\
+                        +self.phi)**2)*self.theta
                     M_x[i,j+self.N*k] = vn
         
         #Remove first row of zeroes
         return M_x[1:]
 
-    def digitalConversion(V,V_low,V_high,bits):
+    def ADC(V,V_low,V_high,bits):
         """
         Convert analog voltage to digital with bits # of bits
 
