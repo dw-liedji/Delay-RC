@@ -406,9 +406,10 @@ class DelayReservoir():
         
         #Add extra layer to account for delay at t = 0
         M_x = np.zeros((1+cycles,self.N))
-        for i in range(len(u)):
-            u[i] = DelayReservoir.ADC(u[i],0,0.5,bits)
-        J = self.mask(u,m)
+        u_new = np.zeros(cycles)
+        for i in range(cycles):
+            u_new[i] = DelayReservoir.ADC(u[i],0,0.5,bits)
+        J = self.mask(u_new,m)
         
         #Add extra layer to match indexes with M_x
         J = np.vstack((np.zeros((1,self.N)),J))
@@ -425,13 +426,23 @@ class DelayReservoir():
                 M_x[i,0+(self.loops-1-j)*self.N] = vn_0
             for j in range(1,self.N): 
                 for k in range(self.loops):
-                    vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
-                        self.eta*np.sin(\
-                        M_x[i-1,j-1+self.N*k]+\
-                        self.gamma*\
-                        J[i-1,j-1+self.N*k]\
-                        +self.phi)**2)*self.theta
-                    M_x[i,j+self.N*k] = vn
+                    if j < 400:
+                        vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                            self.eta*np.sin(DelayReservoir.ADC(\
+                            M_x[i-1,j-1+self.N*k],0.15825,0.16025,bits)+\
+                            self.gamma*\
+                            J[i-1,j-1+self.N*k]\
+                            +self.phi)**2)*self.theta
+                    else:
+                        vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                            self.eta*np.sin(\
+                            M_x[i-1,j-1+self.N*k]+\
+                            self.gamma*\
+                            J[i-1,j-1+self.N*k]\
+                            +self.phi)**2)*self.theta
+
+                    M_x[i,j+self.N*k] = DelayReservoir.ADC(vn,0.15825,0.16025,\
+                        bits)
         
         #Remove first row of zeroes
         return M_x[1:]
@@ -452,8 +463,7 @@ class DelayReservoir():
         
         #Find bit that V is closest to
         V_tot = V_high - V_low
-        vals = np.linspace(V_low,V_high,2**bits)
-        diff = abs(V*np.ones(2**bits)-vals)
-        b = np.argmin(diff)*(V_tot/2**bits)+V_low
+        Nb = int(((V-V_low)/V_tot)*2**bits)
+        b = Nb*(V_tot/2**bits)+V_low
         
         return b

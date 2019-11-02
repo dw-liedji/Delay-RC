@@ -33,7 +33,8 @@ def NARMA_Generator(length,u):
 
 
 def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
-        plot = True,N = 400,eta = 0.4,gamma = 0.05,phi = np.pi/6,tau = 400):
+        plot = True,N = 400,eta = 0.4,gamma = 0.05,phi = np.pi/6,tau = 400,
+        bits = 8):
     """
     Args:
         test_length: length of verification data
@@ -46,6 +47,7 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
         eta: oscillation strength
         phi: phase of MZN
         r: loop delay length 
+        bits: bit precision
 
     Returns:
         NRMSE: Normalized Root Mean Square Error
@@ -53,7 +55,7 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
     
     #Randomly initialize u and m
     u = np.random.rand(train_length+test_length)/2.
-    m = np.array([random.choice([-0.1,0.1]) for i in range(400//num_loops)])
+    m = np.array([random.choice([-0.1,0.1]) for i in range(N//num_loops)])
  
     #Calculate NARMA10 target
     target = NARMA_Generator(len(u),u)
@@ -61,9 +63,9 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
     #Instantiate Reservoir, feed in training and verification datasets
     r1 = DelayReservoir(N = N//num_loops,eta = eta,gamma = gamma,theta = 0.2,
         loops=num_loops,phi = phi)
-    x = r1.calculateMZNBit(u[:train_length],m,8)
+    x = r1.calculateMZNBit(u[:train_length],m,bits)
     x_ideal = r1.calculateMZN(u[:train_length],m)
-    x_test = r1.calculateMZNBit(u[train_length:],m,8)
+    x_test = r1.calculateMZNBit(u[train_length:],m,bits)
     x_test_ideal = r1.calculateMZN(u[train_length:],m)
     
     #Train using Ridge Regression
@@ -77,9 +79,9 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
     
     #Plot predicted Time Series
     if(plot == True):
-        #fig, (ax1,ax2) = plt.subplots(2,1)
-        plt.plot(x.flatten()[5000:])
-        plt.plot(x_ideal.flatten()[5000:])
+        fig, (ax1,ax2) = plt.subplots(2,1)
+        ax1.plot(x.flatten()[5000:])
+        ax2.plot(x_ideal.flatten()[5000:])
         #plt.plot(x.flatten()[5000:]-x_ideal.flatten()[5000:])
         '''
         plt.plot(y_test[50:],label='Prediction')
@@ -181,20 +183,20 @@ def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
     return NRMSE
 
 
-print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
-    gamma = 0.05,plot = True,N = 400,tau = 400))
+#print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
+#    gamma = 0.05,plot = True,N = 400,tau = 400,bits = 32))
 
 
 #print(NARMA_Test_Compare())
 
-'''
+
 error1 = []
 error2 = []
-for i in range(15):
+for i in range(7):
     #error1.append(NARMA_Test(test_length = 800,train_length = 800,
     #    num_loops = 1,a = 0, plot = False,N = 200))
     error2.append(NARMA_Test(test_length = 800,train_length = 800,
-        num_loops = 1,gamma = 0.05, plot = False,N = 400,tau = 750))
+        num_loops = 1,gamma = 0.05, plot = False,bits = 28))
 
 
 
@@ -205,4 +207,4 @@ for i in range(15):
 #plt.show()
 #print(np.mean(error1),np.std(error1))
 print(np.mean(error2),np.std(error2))
-'''
+
