@@ -4,6 +4,7 @@ import numpy as np
 import random
 from matplotlib import pyplot as plt
 from sklearn.linear_model import Ridge
+from sklearn.linear_model import RidgeCV
 from Delay_Reservoir import DelayReservoir
 
 ############################################################################
@@ -67,31 +68,47 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
     x_ideal = r1.calculateMZN(u[:train_length],m)
     x_test = r1.calculateMZNBit(u[train_length:],m,bits)
     x_test_ideal = r1.calculateMZN(u[train_length:],m)
-    
+
     #Train using Ridge Regression
-    clf = Ridge(alpha = a)
+    clf = RidgeCV(alphas = a)
     clf.fit(x,target[:train_length])
     y_test = clf.predict(x_test)
+    y_input = clf.predict(x)
 
     #Calculate NRMSE
     NRMSE = np.sqrt(np.mean(np.square(y_test[50:]-target[train_length+50:]))/\
             np.var(target[train_length+50:]))
     
+    NRMSEi = np.sqrt(np.mean(np.square(y_input-target[:train_length]))/\
+            np.var(target[:train_length]))
+    
+    #Write to File
+    '''
+    x_total = np.concatenate((x,x_test))
+    x_total = x_total.flatten(order='C')
+    file1 = open("data/64_bit_test_x.txt","w+")
+    file2 = open("data/64_bit_test_y.txt","w+")
+    for i in range(2*320000):
+        file1.write("%f"%x_total[i]+"\n")
+        if(i < 1600):
+            file2.write("%f"%target[i]+"\n")
+    file1.close()
+    '''
+
+    
     #Plot predicted Time Series
     if(plot == True):
-        fig, (ax1,ax2) = plt.subplots(2,1)
-        ax1.plot(x.flatten()[5000:])
-        ax2.plot(x_ideal.flatten()[5000:])
+        #fig, (ax1,ax2) = plt.subplots(2,1)
+        #ax1.plot(x.flatten()[5000:])
+        #ax2.plot(x_ideal.flatten()[5000:])
         #plt.plot(x.flatten()[5000:]-x_ideal.flatten()[5000:])
-        '''
-        plt.plot(y_test[50:],label='Prediction')
-        plt.plot(target[train_length+50:],label='Target')
+        plt.plot(y_input,label='Prediction')
+        plt.plot(target[:train_length],label='Target')
         plt.title('NRMSE = %f'%NRMSE)
         plt.legend()
-        '''
         plt.show()
 
-    return NRMSE
+    return NRMSE,NRMSEi
 
 def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
         a = 0,plot = True,N = 400,eta = 0.5,gamma = 1,phi = np.pi/4,r = 1):
@@ -102,7 +119,7 @@ def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
         test_length: length of verification data
         train_length: length of training data
         num_loops: number of delay loops in reservoir
-        a: ridge regression parameter
+        a: list of ridge regression constants for hyperparameter tuning
         N: number of virtual nodes
         plot: display calculated time series
         gamma: input gain
@@ -151,7 +168,7 @@ def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
     x = x.reshape((1000,400))
 
     #Train using Ridge Regression
-    clf = Ridge(alpha = a)
+    clf = Ridge(alpha = a,fit_intercept=True)
     clf.fit(x[:800],target[:train_length])
     w = clf.coef_
     y_train = x@w
@@ -183,20 +200,23 @@ def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
     return NRMSE
 
 
-#print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
-#    gamma = 0.05,plot = True,N = 400,tau = 400,bits = 32))
+alphas = np.logspace(-15,-4,100)
+print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
+    a = alphas,gamma = 0.05,plot = True,N = 200,tau = 400,bits = 12))
 
 
 #print(NARMA_Test_Compare())
 
 
+'''
+l = np.linspace(1e-11,1e-10,20)
 error1 = []
 error2 = []
-for i in range(7):
+for i in range(10):
     #error1.append(NARMA_Test(test_length = 800,train_length = 800,
     #    num_loops = 1,a = 0, plot = False,N = 200))
     error2.append(NARMA_Test(test_length = 800,train_length = 800,
-        num_loops = 1,gamma = 0.05, plot = False,bits = 28))
+        num_loops = 1,a = 0,gamma = 0.05, plot = False,N = 400,bits = 64))
 
 
 
@@ -206,5 +226,6 @@ for i in range(7):
 #plt.xlabel('Input gain [dB]')
 #plt.show()
 #print(np.mean(error1),np.std(error1))
+#print(error2)
 print(np.mean(error2),np.std(error2))
-
+'''
