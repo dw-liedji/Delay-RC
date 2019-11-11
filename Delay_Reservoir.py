@@ -414,7 +414,7 @@ class DelayReservoir():
         #Add extra layer to match indexes with M_x
         J = np.vstack((np.zeros((1,self.N)),J))
         
-        #Iteratively solve Mackey Glass Equation with Euler's Method
+        #Iteratively solve differentiasl equation with Euler's Method
         for i in range(1,cycles+1):
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
@@ -431,21 +431,74 @@ class DelayReservoir():
                             self.eta*np.sin(DelayReservoir.ADC(\
                             M_x[i-1,j-1+self.N*k],0.15825,0.16025,bits)+\
                             self.gamma*\
-                            J[i-1,j-1+self.N*k]\
+                            J[i-1,j-1]\
                             +self.phi)**2)*self.theta
                     else:
                         vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
                             self.eta*np.sin(\
                             M_x[i-1,j-1+self.N*k]+\
                             self.gamma*\
-                            J[i-1,j-1+self.N*k]\
+                            J[i-1,j-1]\
                             +self.phi)**2)*self.theta
 
-                    M_x[i,j+self.N*k] = DelayReservoir.ADC(vn,0.15825,0.16025,\
-                        bits)
+                    M_x[i,j] = DelayReservoir.ADC(vn,\
+                        0.15825,0.16025,bits)
+                    
         
         #Remove first row of zeroes
         return M_x[1:]
+    
+    def calculateMGBit(self,u,m,bits):
+        """
+        Calculate rservoir state with Mackey-Glass activation function with 
+        finite bit precision
+
+        Args:
+            u: input array
+            m: mask array
+            bits: number of bit precisoni
+
+        Returns:
+            M_x: matrix of reservoir history
+        """
+        cycles = len(u)
+        
+        #Add extra layer to account for delay at t = 0
+        M_x = np.zeros((1+cycles,self.N))
+        u_new = np.zeros(cycles)
+        for i in range(cycles):
+            u_new[i] = DelayReservoir.ADC(u[i],0,0.5,bits)
+        J = self.mask(u_new,m)
+        
+        #Add extra layer to match indexes with M_x
+        J = np.vstack((np.zeros((1,self.N)),J))
+
+        #Iteratively solve differential equation with Euler's Method
+        for i in range(1,cycles+1):
+            for j in range(self.loops-1,-1,-1):
+                vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
+                        +self.eta*(DelayReservoir.ADC(M_x[i-1,-1-self.N*j],\
+                        -0.01,0.01,bits)+self.gamma*\
+                        J[i-1,-1-self.N*j])/(1+
+                        DelayReservoir.ADC(M_x[i-1,-1-self.N*j],-0.01,0.01,\
+                        bits) + \
+                        self.gamma*J[i-1,-1-self.N*j]))*self.theta
+                M_x[i,0+(self.loops-1-j)*self.N] = vn_0
+            for j in range(1,self.N): 
+                for k in range(self.loops):
+                    vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
+                        self.eta*(DelayReservoir.ADC(M_x[i-1,j-1+self.N*k],\
+                        -0.01,0.01,bits)+self.gamma* \
+                        J[i-1,j-1+self.N*k])/(1+DelayReservoir.ADC(\
+                        M_x[i-1,j-1+self.N*k],-0.01,0.01,bits)+\
+                        self.gamma*J[i-1,j-1+self.N*k]))*self.theta
+                    M_x[i,j+self.N*k] = DelayReservoir.ADC(vn,-0.01,0.01,bits)
+
+        
+        #Remove first row of zeroes
+        return M_x[1:]
+
+
 
     def ADC(V,V_low,V_high,bits):
         """
@@ -463,7 +516,7 @@ class DelayReservoir():
         
         #Find bit that V is closest to
         V_tot = V_high - V_low
-        Nb = int(((V-V_low)/V_tot)*2**bits)
+        Nb = np.around(((V-V_low)/V_tot)*2**bits)
         b = Nb*(V_tot/2**bits)+V_low
         
         return b
