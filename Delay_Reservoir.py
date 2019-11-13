@@ -419,7 +419,7 @@ class DelayReservoir():
             for j in range(self.loops-1,-1,-1):
                 vn_0 = M_x[i-1,-1-self.N*j] + (-M_x[i-1,-1-self.N*j]\
                         +self.eta*np.sin(DelayReservoir.ADC(\
-                        M_x[i-1,-1-self.N*j],0.16025,0.15825,\
+                        M_x[i-1,-1-self.N*j],0.15825,0.16025,\
                         bits)+self.gamma*\
                         J[i-1,-1-self.N*j]+self.phi)**2)*\
                         self.theta
@@ -429,20 +429,21 @@ class DelayReservoir():
                     if j < 400:
                         vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
                             self.eta*np.sin(DelayReservoir.ADC(\
-                            M_x[i-1,j-1+self.N*k],0.15825,0.16025,bits)+\
+                            M_x[i-1,j-1+self.N*k],-1,1,bits)+\
                             self.gamma*\
-                            J[i-1,j-1]\
+                            J[i,j-1]\
                             +self.phi)**2)*self.theta
                     else:
                         vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
                             self.eta*np.sin(\
                             M_x[i-1,j-1+self.N*k]+\
                             self.gamma*\
-                            J[i-1,j-1]\
+                            J[i,j-1]\
                             +self.phi)**2)*self.theta
 
-                    M_x[i,j] = DelayReservoir.ADC(vn,\
-                        0.15825,0.16025,bits)
+                    M_x[i,j] = vn
+                    #M_x[i,j] = DelayReservoir.ADC(vn,\
+                    #    0.15825,0.16025,bits)
                     
         
         #Remove first row of zeroes
@@ -489,9 +490,9 @@ class DelayReservoir():
                     vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
                         self.eta*(DelayReservoir.ADC(M_x[i-1,j-1+self.N*k],\
                         -0.01,0.01,bits)+self.gamma* \
-                        J[i-1,j-1+self.N*k])/(1+DelayReservoir.ADC(\
+                        J[i,j-1+self.N*k])/(1+DelayReservoir.ADC(\
                         M_x[i-1,j-1+self.N*k],-0.01,0.01,bits)+\
-                        self.gamma*J[i-1,j-1+self.N*k]))*self.theta
+                        self.gamma*J[i,j-1+self.N*k]))*self.theta
                     M_x[i,j+self.N*k] = DelayReservoir.ADC(vn,-0.01,0.01,bits)
 
         

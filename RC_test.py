@@ -35,10 +35,10 @@ def NARMA_Generator(length,u):
 
 def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
         plot = True,N = 400,eta = 0.4,gamma = 0.05,phi = np.pi/6,tau = 400,
-        bits = 8):
+        bits = 8,preload = False):
     """
     Args:
-        test_length: length of verification data
+        test_length: length of testing data
         train_length: length of training data
         num_loops: number of delay loops in reservoir
         a: ridge regression parameter
@@ -49,14 +49,32 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
         phi: phase of MZN
         r: loop delay length 
         bits: bit precision
+        preload: preload mask and time-series data
 
     Returns:
         NRMSE: Normalized Root Mean Square Error
     """
     
+    #Import u and m
+    if preload:
+        file1 = open("data/Input_sequence.txt","r")
+        file2 = open("data/mask_2.txt","r")
+        contents = file1.readlines()
+        contents2 = file2.readlines()
+        u = []
+        m = []
+        for i in range(1000):
+            u.append(float(contents[i][0:contents[i].find("\t")]))
+            if i < 400:
+                m.append(float(contents2[i][0:contents2[i].find("\n")]))
+        file1.close()
+        file2.close()
+        u = np.array(u)
+        m = np.array(m)
     #Randomly initialize u and m
-    u = np.random.rand(train_length+test_length)/2.
-    m = np.array([random.choice([-0.1,0.1]) for i in range(N//num_loops)])
+    else:
+        u = np.random.rand(train_length+test_length)/2.
+        m = np.array([random.choice([-0.1,0.1]) for i in range(N//num_loops)])
  
     #Calculate NARMA10 target
     target = NARMA_Generator(len(u),u)
@@ -65,12 +83,13 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
     r1 = DelayReservoir(N = N//num_loops,eta = eta,gamma = gamma,theta = 0.2,
         loops=num_loops,phi = phi)
     x = r1.calculateMZNBit(u[:train_length],m,bits)
-    x_ideal = r1.calculateMZN(u[:train_length],m)
+    #x_ideal = r1.calculateMZN(u[:train_length],m)
     x_test = r1.calculateMZNBit(u[train_length:],m,bits)
-    x_test_ideal = r1.calculateMZN(u[train_length:],m)
-
+    #x_test_ideal = r1.calculateMZN(u[train_length:],m) 
+    
     #Train using Ridge Regression
-    clf = RidgeCV(alphas = a)
+    #clf = RidgeCV(alphas = a,fit_intercept = True)
+    clf = Ridge(alpha = a)
     clf.fit(x,target[:train_length])
     y_test = clf.predict(x_test)
     y_input = clf.predict(x)
@@ -101,14 +120,14 @@ def NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,a = 0,
         #fig, (ax1,ax2) = plt.subplots(2,1)
         #ax1.plot(x.flatten()[5000:])
         #ax2.plot(x_ideal.flatten()[5000:])
-        #plt.plot(x.flatten()[5000:]-x_ideal.flatten()[5000:])
-        plt.plot(y_input,label='Prediction')
-        plt.plot(target[:train_length],label='Target')
+        #plt.plot(x.flatten()[:1200])
+        plt.plot(y_test[50:],label='Prediction')
+        plt.plot(target[train_length+50:],label='Target')
         plt.title('NRMSE = %f'%NRMSE)
         plt.legend()
         plt.show()
 
-    return NRMSE,NRMSEi
+    return NRMSE
 
 def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
         a = 0,plot = True,N = 400,eta = 0.5,gamma = 1,phi = np.pi/4,r = 1):
@@ -200,9 +219,10 @@ def NARMA_Test_Compare(test_length = 200,train_length = 800,num_loops = 1,
     return NRMSE
 
 
-alphas = np.logspace(-15,-4,100)
+#alphas = np.logspace(-10,-6,100)
 print(NARMA_Test(test_length = 800,train_length = 800,num_loops = 1,
-    a = alphas,gamma = 0.05,plot = True,N = 200,tau = 400,bits = 12))
+    a = 1e-8,gamma = 0.05,plot = True,N = 400,eta = 0.4,tau = 400,bits = 20,
+    preload = False))
 
 
 #print(NARMA_Test_Compare())
@@ -216,7 +236,7 @@ for i in range(10):
     #error1.append(NARMA_Test(test_length = 800,train_length = 800,
     #    num_loops = 1,a = 0, plot = False,N = 200))
     error2.append(NARMA_Test(test_length = 800,train_length = 800,
-        num_loops = 1,a = 0,gamma = 0.05, plot = False,N = 400,bits = 64))
+        num_loops = 1,a = 5e-15,gamma = 0.05, plot = False,N = 400,bits = 20))
 
 
 
