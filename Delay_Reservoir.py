@@ -429,7 +429,7 @@ class DelayReservoir():
                     if j < 400:
                         vn = M_x[i,j-1+self.N*k] + (-M_x[i,j-1+self.N*k] + \
                             self.eta*np.sin(DelayReservoir.ADC(\
-                            M_x[i-1,j-1+self.N*k],-1,1,bits)+\
+                            M_x[i-1,j-1+self.N*k],0.15825,0.16025,bits)+\
                             self.gamma*\
                             J[i,j-1]\
                             +self.phi)**2)*self.theta
@@ -441,9 +441,9 @@ class DelayReservoir():
                             J[i,j-1]\
                             +self.phi)**2)*self.theta
 
-                    M_x[i,j] = vn
-                    #M_x[i,j] = DelayReservoir.ADC(vn,\
-                    #    0.15825,0.16025,bits)
+                    #M_x[i,j] = vn
+                    M_x[i,j] = DelayReservoir.ADC(vn,\
+                        0.15825,0.16025,bits)
                     
         
         #Remove first row of zeroes
